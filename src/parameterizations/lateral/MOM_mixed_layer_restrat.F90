@@ -100,7 +100,7 @@ type, public :: mixedlayer_restrat_CS ; private
   logical :: use_Zhang23 = .false. !< If true, use the Zhang et al., 2023, parameterization.
   real    :: C_z                   !< Efficiency coefficient used by the Zhang et al., 2023, parameterization. [nondim]
   real    :: B_z                   !< Tunable parameter used for parameterization, see Calvert et al., 2020
-                                   !! and Feng et al., 2025 for details. [T L-1 ~> s m-1]
+                                   !! and Feng et al., 2026 for details. [T L-1 ~> s m-1]
   real    :: Zhang23_MLD_decay_time = 0. !< Time-scale for a running-mean filter applied to the MLD used by
                                    !! the Zhang23 parameterization; filters both deepening and shoaling [T ~> s].
   real    :: Zhang23_MSR_decay_time = 0. !< Time-scale for a running-mean filter applied to the mixed-layer
@@ -1264,7 +1264,7 @@ subroutine mixedlayer_restrat_Bodner(CS, G, GV, US, h, uhtr, vhtr, tv, forces, d
 end subroutine mixedlayer_restrat_Bodner
 
 !> Calculates a restratifying flow following the formulation of Zhang et al. 2023 (Zhang23),
-!! which simultaneously considering submesoscale baroclinic instability and strain-induced frontogenesis
+!! which simultaneously considers submesoscale baroclinic instability and strain-induced frontogenesis
 !! with an improved vertical structure function.
 subroutine mixedlayer_restrat_Zhang23(h, u, v, uhtr, vhtr, tv, dt, h_MLD, G, GV, US, CS)
   ! Arguments
@@ -2436,7 +2436,7 @@ logical function mixedlayer_restrat_init(Time, G, GV, US, param_file, diag, CS, 
             "Tunable parameter used for Zhang23 parameterization. "//&
             "B_Z is equivalent to the inverse of the product of the "//&
             "reference mixed-layer Rossby radius and the reference coriolis parameter. "//&
-            "More details about this parameter can be found at Calvert et al. 2020 and Feng et al. 2025",&
+            "More details about this parameter can be found at Calvert et al. 2020 and Feng et al. 2026",&
             units="m-1 s", default=4.0, scale=US%L_to_m*US%s_to_T)
     call get_param(param_file, mdl, "F_MIN", CS%Zhang23_f_min, &
             "A hard floor on the absolute value of the Coriolis parameter used by the "//&
