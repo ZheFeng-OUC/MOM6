@@ -2998,5 +2998,189 @@ end function test_answer
 !! and J. Dong, 2023: Modifying the Mixed Layer Eddy Parameterization to Include Frontogenesis Arrest by
 !! Boundary Layer Turbulence. J. Phys. Oceanogr., 53(1), p323-339.
 !! https://doi.org/10.1175/JPO-D-21-0297.1
+!!
+!! \subsection The Zhang et al. (2023) parameterization
+!! To use this variant of the parameterization, set <code>USE_ZHANG23=True</code>.
+!!
+!! Zhang et al. (2023) proposed a parameterization of submesoscale vertical buoyancy
+!! flux (VBF) that simultaneously accounts for submesoscale baroclinic instability and
+!! strain-induced frontogenesis. The Zhang23 parameterization explicitly includes 
+!! the mixed-layer strain rate and uses a vertical structure function that
+!! extends beneath the mixed-layer base.
+!!
+!! The three-dimensional VBF proposed by Zhang et al. (2023) can be written as
+!! \f[
+!!   \overline{w'b'} =
+!!   C\,\xi\left(\frac{z}{H}\right)
+!!   \frac{ \left(\overline{SR}\,H\right)^2
+!!          \left|\nabla_h\bar{b}\right|^2 }
+!!        {|f|^3},
+!! \f]
+!! where \f$H\f$ is the mixed-layer depth, \f$\bar{b}\f$ is the buoyancy averaged
+!! over the mixed layer, \f$\overline{SR}\f$ is the mixed-layer strain rate,
+!! \f$f\f$ is the Coriolis parameter, \f$C\f$ is an empirical efficiency coefficient,
+!! and \f$\xi\f$ is the vertical structure function.
+!!
+!! Following Calvert et al. (2020) and Feng et al. (2026), 
+!! a grid-scale-dependent factor \f$B L\f$ is introduced
+!! when applying Zhang23 in a mesoscale-resolving model. Feng et al. (2026) define
+!! \f[
+!!   B = \frac{1}{L_0 f_0},
+!! \f]
+!! where \f$L_0\f$ and \f$f_0\f$ are a reference mixed-layer Rossby radius and
+!! Coriolis parameter. Using \f$L_0=5\f$ km and
+!! \f$f_0=5\times10^{-5}\ {\rm s}^{-1}\f$ gives
+!! \f$B=4\ {\rm m}^{-1}{\rm s}\f$.
+!!
+!! In this MOM6 implementation, the parameterization is expressed as a
+!! restratifying overturning stream function,
+!! \f[
+!!   {\bf \Psi}
+!!   =
+!!   C_Z B_Z L H^2
+!!   \left(\frac{\overline{SR}}{f_*}\right)^2
+!!   \left(\nabla_h\bar{b}\times\hat{\bf z}\right)
+!!   \xi(\sigma),
+!! \f]
+!! where
+!! \f[
+!!   f_* = \max\left(|f|,f_{\min}\right).
+!! \f]
+!! The lower bound \f$f_{\min}\f$ prevents the stream function, which scales as
+!! \f$(\overline{SR}/f)^2\f$, from becoming singular near the equator.
+!!
+!!
+!! The vertical structure function is adapted from Eq. (10) of Zhang et al. (2023):
+!! \f[
+!!   \xi(\sigma)
+!!   =
+!!   -\frac{4}{3}\sigma
+!!   \exp\left(-\frac{8}{9}\sigma^2+\frac{1}{2}\right),
+!!   \qquad -2.5 < \sigma \le 0,
+!! \f]
+!! where
+!! \f[
+!!   \sigma=\frac{z}{H_\xi}.
+!! \f]
+!! The surface corresponds to \f$\sigma=0\f$. The function reaches its maximum
+!! value of 1 at \f$\sigma=-3/4\f$ and decreases below the mixed-layer base.
+!! In the MOM6 implementation,
+!! \f[
+!!   \xi(\sigma)=0
+!!   \qquad {\rm for}\qquad \sigma\le-2.5,
+!! \f]
+!! or when the water column has reached the bathymetry.
+!!
+!! To prevent the vertical structure function from extending below the shallower
+!! of the two columns adjoining a velocity point, the depth scale used for
+!! \f$\sigma\f$ is limited according to
+!! \f[
+!!   H_\xi = \min\left(H,\,0.4D\right),
+!! \f]
+!! where \f$D\f$ is the shallower local ocean depth. Because the structure
+!! function is set to zero at \f$\sigma=-2.5\f$, this choice ensures that its
+!! nominal lower limit, \f$2.5H_\xi\f$, does not extend below the bathymetry.
+!! The mixed-layer depth \f$H\f$ itself is retained in the amplitude of the
+!! stream function.
+!!
+!! The parameterization is disabled at velocity points 
+!! where either adjoining tracer cell is shallower than
+!! <code>ZHANG23%MIN_OCEAN_DEPTH</code>.
+!!
+!! \subsection section_zhang23_mld Mixed-layer depth
+!!
+!! If <code>MLE_USE_PBL_MLD=True</code>, the mixed-layer depth is taken from the
+!! active planetary boundary-layer parameterization. Otherwise, the mixed-layer
+!! depth is diagnosed using the density-difference criterion
+!! <code>MLE_DENSITY_DIFF</code>. In either case,
+!! <code>MLE_MLD_STRETCH</code> provides a multiplicative adjustment to the
+!! mixed-layer depth used by the parameterization.
+!!
+!! An optional running-mean filter can be applied to the mixed-layer depth:
+!! \f[
+!!   \bar{H}^{\,n+1}
+!!   =
+!!   \frac{
+!!     \Delta t\,H^{n+1}
+!!     + \tau_H\bar{H}^{\,n}
+!!   }{
+!!     \Delta t+\tau_H
+!!   },
+!! \f]
+!! where \f$\tau_H\f$ is
+!! <code>ZHANG23%MLD_DECAY_TIME</code>. Unlike the one-sided MLD filter used by
+!! the original mixed-layer eddy parameterization, this filter is applied
+!! symmetrically to both deepening and shoaling. A value of zero disables the
+!! filter.
+!!
+!! \subsection section_zhang23_sr Time-filtering of strain rate
+!!
+!! An analogous running-mean filter may be applied to the mixed-layer strain rate:
+!! \f[
+!!   \overline{SR}_f^{\,n+1}
+!!   =
+!!   \frac{
+!!     \Delta t\,\overline{SR}^{\,n+1}
+!!     + \tau_{SR}\overline{SR}_f^{\,n}
+!!   }{
+!!     \Delta t+\tau_{SR}
+!!   },
+!! \f]
+!! where \f$\tau_{SR}\f$ is
+!! <code>ZHANG23%MSR_DECAY_TIME</code>. A value of zero disables this filter.
+!! When either Zhang23 time filter is enabled, its filtered field is registered
+!! as a restart field.
+!!
+!! | Symbol                       | Module parameter                |
+!! | ---------------------------- | ------------------------------- |
+!! |                              | USE_ZHANG23                     |
+!! | \f$ C_Z \f$                  | ZHANG23\%C_Z                    |
+!! | \f$ B_Z \f$                  | ZHANG23\%B_Z                    |
+!! | \f$ f_{\min} \f$             | ZHANG23\%F_MIN                  |
+!! | \f$ D_{\min} \f$             | ZHANG23\%MIN_OCEAN_DEPTH        |
+!! | \f$ \tau_H \f$               | ZHANG23\%MLD_DECAY_TIME         |
+!! | \f$ \tau_{SR} \f$            | ZHANG23\%MSR_DECAY_TIME         |
+!! | \f$ \alpha_H \f$             | MLE_MLD_STRETCH                 |
+!! | \f$ \Delta\rho \f$           | MLE_DENSITY_DIFF                |
+!! |                              | MLE_USE_PBL_MLD                 |
+!!
+!! The default Zhang23-specific parameter values are
+!! \f[
+!!   C_Z = 450,\qquad
+!!   B_Z = 4\ {\rm m}^{-1}{\rm s},\qquad
+!!   f_{\min}=1.27\times10^{-5}\ {\rm s}^{-1},
+!! \f]
+!! \f[
+!!   D_{\min}=50\ {\rm m},\qquad
+!!   \tau_H=0,\qquad
+!!   \tau_{SR}=0.
+!! \f]
+!! The default value of \f$C_Z\f$ is tuned for the OM4_025 configuration.
+!! The default \f$f_{\min}\f$ is approximately the Coriolis parameter at
+!! 5 degrees latitude. The default values of the two filter time scales disable
+!! time filtering.
+!!
+!! <code>ZHANG23%C_Z</code> and <code>ZHANG23%B_Z</code> must be non-negative,
+!! while <code>ZHANG23%F_MIN</code> must be strictly positive.
+!!
+!! \subsection section_zhang23_ref References
+!!
+!! J. Zhang, Z. Zhang, and B. Qiu, 2023:
+!! Parameterizing Submesoscale Vertical Buoyancy Flux by Simultaneously Considering
+!! Baroclinic Instability and Strain-Induced Frontogenesis.
+!! Geophys. Res. Lett., 50(8), e2022GL102292.
+!! https://doi.org/10.1029/2022GL102292
+!!
+!! D. Calvert, G. Nurser, M. J. Bell, and B. Fox-Kemper, 2020:
+!! The Impact of a Parameterisation of Submesoscale Mixed Layer Eddies on Mixed Layer
+!! Depths in the NEMO Ocean Model.
+!! Ocean Modell., 154, 101678.
+!! https://doi.org/10.1016/j.ocemod.2020.101678
+!!
+!! Z. Feng, Z. Zhang, J. Zhang, W. Zhang, M. Yuan, Z. Jing, W. Zhao, and J. Tian, 2026:
+!! Implementation and Evaluation of a New Parameterization of Submesoscale Vertical Flux
+!! in a Mesoscale-Resolving Model in the North Pacific.
+!! Ocean Modell., 199, 102655.
+!! https://doi.org/10.1016/j.ocemod.2025.102655
 
 end module MOM_mixed_layer_restrat
