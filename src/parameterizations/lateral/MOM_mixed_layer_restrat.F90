@@ -1318,9 +1318,9 @@ subroutine mixedlayer_restrat_Zhang23(h, u, v, uhtr, vhtr, tv, dt, h_MLD, G, GV,
   real, dimension(SZI_(G)) :: covTS, & ! SGS TS covariance in Stanley param; currently 0 [C S ~> degC ppt]
                               varS     ! SGS S variance in Stanley param; currently 0    [S2 ~> ppt2]
   real :: dxi(SZK_(GV))   ! Change in xi(z) across layer k [nondim]
-  real :: Rml_int(SZI_(G)) ! Potential density integrated through the mixed layer [R H ~> kg m-2 or kg2 m-5]
+  real :: Rml_int(SZI_(G))! Potential density integrated through the mixed layer [R H ~> kg m-2 or kg2 m-5]
   real :: SpV_ml(SZI_(G)) ! Specific volume evaluated at the surface pressure [R-1 ~> m3 kg-1]
-  real :: SpV_int(SZI_(G)) ! Specific volume integrated through the mixed layer [H R-1 ~> m4 kg-1 or m]
+  real :: SpV_int(SZI_(G))! Specific volume integrated through the mixed layer [H R-1 ~> m4 kg-1 or m]
   real :: rho_ml(SZI_(G)) ! Potential density relative to the surface [R ~> kg m-3]
   real :: p0(SZI_(G))     ! A pressure of 0 [R L2 T-2 ~> Pa]
   real :: grid_scale      ! horizontal grid scales [L ~> m]
@@ -1475,7 +1475,7 @@ subroutine mixedlayer_restrat_Zhang23(h, u, v, uhtr, vhtr, tv, dt, h_MLD, G, GV,
   !$OMP end do
 
   !$OMP do
-  ! Calculate the mixed-layer averaged shear strain rate at q-points.
+  ! Calculate the shear strain rate within the mixed layer at q-points.
   do J=js-1,je
     do I=is-1,ie
       sh_xy_int(I,J) = 0.0
@@ -3000,7 +3000,7 @@ end function test_answer
 !! https://doi.org/10.1175/JPO-D-21-0297.1
 !!
 !! \subsection The Zhang et al. (2023) parameterization
-!! To use this variant of the parameterization, set <code>USE_ZHANG23=True</code>.
+!! To use this parameterization, set <code>USE_ZHANG23=True</code>.
 !!
 !! Zhang et al. (2023) proposed a parameterization of submesoscale vertical buoyancy
 !! flux (VBF) that simultaneously accounts for submesoscale baroclinic instability and
